@@ -1,15 +1,17 @@
 // +build imagemagick
 
-package thumbnail
+package images
 
 import (
 	"io"
 	"io/ioutil"
 
+	"github.com/kildevaeld/thumbnail"
+
 	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
-func thumbnail(reader io.Reader, size Size, w io.Writer) error {
+func thumb(w io.Writer, reader io.Reader, o thumbnail.Options) error {
 	imagick.Initialize()
 	defer imagick.Terminate()
 
@@ -27,6 +29,8 @@ func thumbnail(reader io.Reader, size Size, w io.Writer) error {
 	wi := mw.GetImageWidth()
 	he := mw.GetImageHeight()
 
+	size := o.Size
+
 	if size.Height == 0 {
 		size.Height = uint(round(float64(he) / float64(wi) * float64(size.Width)))
 	} else if size.Width == 0 {
@@ -35,6 +39,17 @@ func thumbnail(reader io.Reader, size Size, w io.Writer) error {
 
 	if err := mw.ThumbnailImage(size.Width, size.Height); err != nil {
 		return err
+	}
+
+	switch o.Type {
+	case thumbnail.PNG:
+		if err := mw.SetImageFormat("PNG"); err != nil {
+			return err
+		}
+	case thumbnail.JPEG:
+		if err := mw.SetImageFormat("JPEG"); err != nil {
+
+		}
 	}
 
 	bs = mw.GetImageBlob()

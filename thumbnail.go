@@ -1,7 +1,7 @@
 package thumbnail
 
 import (
-	"bytes"
+	"errors"
 	"io"
 )
 
@@ -27,10 +27,69 @@ func Rect(x, y, w, h uint) Rectangle {
 	}
 }
 
-func Thumbnail(w io.Writer, reader io.Reader, size Size) error {
-	return thumbnail(reader, size, w)
+type EncodingType int
+
+const (
+	JPEG EncodingType = iota + 1
+	PNG
+)
+
+type (
+	Thumbnailer interface {
+		Thumbnail(writer io.Writer, reader io.Reader, o Options) error
+		ThumbnailBytes(writer io.Writer, bs []byte, o Options) error
+	}
+
+	Options struct {
+		Type EncodingType
+		Size Size
+	}
+)
+
+var (
+	generators map[string]Thumbnailer
+
+	DefaultSize     = Size{100, 0}
+	DefaultEncoding = PNG
+)
+
+func Register(mime string, fn Thumbnailer) {
+	generators[mime] = fn
 }
 
-func ThumbnailBytes(w io.Writer, bs []byte, size Size) error {
-	return Thumbnail(w, bytes.NewReader(bs), size)
+func init() {
+	generators = make(map[string]Thumbnailer)
+}
+
+func Can(mime string) bool {
+	return generators[mime] != nil
+}
+
+func Thumbnail(mime string, writer io.Writer, reader io.Reader, options ...Options) error {
+
+	opts := Options{DefaultEncoding, DefaultSize}
+
+	if len(options) > 0 {
+		opts = options[0]
+	}
+
+	if !Can(mime) {
+		return errors.New("cannot thumnail: " + mime)
+	}
+	return generators[mime].Thumbnail(writer, reader, opts)
+}
+
+func ThumbnailBytes(mime string, writer io.Writer, bs []byte, options ...Options) error {
+	if !Can(mime) {
+		return errors.New("cannot thumnail: " + mime)
+	}
+
+	opts := Options{DefaultEncoding, DefaultSize}
+
+	if len(options) > 0 {
+		opts = options[0]
+	}
+
+	return generators[mime].ThumbnailBytes(writer, bs, opts)
+
 }

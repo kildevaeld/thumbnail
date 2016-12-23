@@ -1,4 +1,4 @@
-package thumbnail_test
+package images
 
 import (
 	"bytes"
@@ -7,24 +7,28 @@ import (
 	"testing"
 
 	"github.com/kildevaeld/thumbnail"
-	_ "github.com/kildevaeld/thumbnail/images"
 )
 
 func TestThumbnail(t *testing.T) {
 
-	r, e := os.Open("images/cat.jpg")
+	r, e := os.Open("cat.jpg")
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	writer, werr := os.Create("cat2.png")
+	writer, werr := os.Create("cat2.jpg")
 	if werr != nil {
 		t.Fatal(werr)
 	}
 
 	defer writer.Close()
 
-	if err := thumbnail.Thumbnail("image/jpg", writer, r); err != nil {
+	th := &thumbnailer{}
+
+	if err := th.Thumbnail(writer, r, thumbnail.Options{
+		Type: thumbnail.JPEG,
+		Size: thumbnail.Size{100, 0},
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,17 +55,20 @@ func TestThumbnail(t *testing.T) {
 }*/
 
 func BenchmarkThumbnail(t *testing.B) {
-	reader, e := os.Open("images/cat.jpg")
+	reader, e := os.Open("cat.jpg")
 	if e != nil {
 		t.Fatal(e)
 	}
-
+	th := &thumbnailer{}
 	r, _ := ioutil.ReadAll(reader)
 	w := bytes.NewBuffer(nil)
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
-		if err := thumbnail.ThumbnailBytes("image/jpeg", w, r); err != nil {
+		if err := th.ThumbnailBytes(w, r, thumbnail.Options{
+			Type: thumbnail.JPEG,
+			Size: thumbnail.Size{100, 0},
+		}); err != nil {
 			t.Fatal(err)
 		}
 		w.Reset()
